@@ -18,6 +18,8 @@
 #include "Rendering/GI/VK/VkBufferObject.hpp"
 #include "Rendering/GI/VK/VkContext.hpp"
 #include "Rendering/GI/VK/VkPipeline.hpp"
+
+#include "Rendering/GI/DX11/DXContext.hpp"
 #elif BUILD_PLAT == BUILD_PSP
 #define GUGL_IMPLEMENTATION
 #include <gu2gl/gu2gl.h>
@@ -150,6 +152,10 @@ namespace GI {
         extern GLFWwindow* window;
     }
 
+#ifndef NO_EXPERIMENTAL_GRAPHICS
+    D3DXCOLOR clearColor;
+#endif
+
 #elif BUILD_PLAT == BUILD_PSP
     unsigned int __attribute__((aligned(16))) list[0x10000];
 #elif BUILD_PLAT == BUILD_VITA
@@ -226,9 +232,11 @@ namespace GI {
 
 #if BUILD_PC
         if(rctxSettings.renderingApi == Vulkan) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
             detail::VKContext::get().init(app);
             window = detail::window;
             detail::VKPipeline::get().init();
+#endif
         } else if(rctxSettings.renderingApi == OpenGL || rctxSettings.renderingApi == DefaultAPI) {
             SC_CORE_ASSERT(glfwInit(), "GLFW Init Failed!");
 
@@ -246,6 +254,7 @@ namespace GI {
             SC_CORE_ASSERT(gladLoadGLLoader((GLADloadproc)glfwGetProcAddress),
                            "OpenGL Init Failed!");
         } else if (rctxSettings.renderingApi == DX11) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
             SC_CORE_ASSERT(glfwInit(), "GLFW Init Failed!");
 
             glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -253,6 +262,9 @@ namespace GI {
 
             window = glfwCreateWindow(app.width, app.height, app.title, nullptr, nullptr);
             glfwSwapInterval(0);
+
+            detail::DXContext::get().init(window);
+#endif
         }
 
 #elif BUILD_PLAT == BUILD_PSP
@@ -290,10 +302,10 @@ namespace GI {
             glUniformBlockBinding(GI::programID, ubi, 0);
             glGenBuffers(1, &ubo);
             glBindBuffer(GL_UNIFORM_BUFFER, ubo);
-            glBufferData(GL_UNIFORM_BUFFER, 3 * sizeof(glm::mat4), NULL,
+            glBufferData(GL_UNIFORM_BUFFER, 3 * sizeof(Math::Matrix), NULL,
                          GL_STATIC_DRAW);
             glBindBuffer(GL_UNIFORM_BUFFER, 0);
-            glBindBufferRange(GL_UNIFORM_BUFFER, 0, ubo, 0, 3 * sizeof(glm::mat4));
+            glBindBufferRange(GL_UNIFORM_BUFFER, 0, ubo, 0, 3 * sizeof(Math::Matrix));
             glBindBuffer(GL_UNIFORM_BUFFER, GI::programID);
             glEnable(GL_FRAMEBUFFER_SRGB);
 #else
@@ -307,8 +319,14 @@ namespace GI {
     auto terminate() -> void {
 #if BUILD_PC
         if(rctxSettings.renderingApi == Vulkan) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
             detail::VKPipeline::get().deinit();
             detail::VKContext::get().deinit();
+#endif
+        } else if (rctxSettings.renderingApi == DX11) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
+            detail::DXContext::get().deinit();
+#endif
         }
         glfwDestroyWindow(window);
         glfwTerminate();
@@ -324,7 +342,9 @@ namespace GI {
     auto enable(u32 state) -> void {
         if (rctxSettings.renderingApi == Vulkan) {
             if(state == GI_DEPTH_TEST) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
                 vkCmdSetDepthTestEnable(detail::VKPipeline::get().commandBuffer, true);
+#endif
             }
         } else if(rctxSettings.renderingApi == OpenGL || rctxSettings.renderingApi == DefaultAPI) {
             glEnable(state);
@@ -333,7 +353,9 @@ namespace GI {
     auto disable(u32 state) -> void {
         if(rctxSettings.renderingApi == Vulkan) {
             if(state == GI_DEPTH_TEST) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
                 vkCmdSetDepthTestEnable(detail::VKPipeline::get().commandBuffer, false);
+#endif
             }
         } else if(rctxSettings.renderingApi == OpenGL || rctxSettings.renderingApi == DefaultAPI) {
 #ifndef PSP
@@ -346,6 +368,7 @@ namespace GI {
 
     auto set_culling_mode(bool enabled, bool ccw) -> void {
         if(rctxSettings.renderingApi == Vulkan) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
             VkCullModeFlags cullMode;
             if(enabled) {
                 if(!ccw) {
@@ -358,6 +381,7 @@ namespace GI {
             }
 
             vkCmdSetCullMode(detail::VKPipeline::get().commandBuffer, cullMode);
+#endif
         } else if(rctxSettings.renderingApi == OpenGL || rctxSettings.renderingApi == DefaultAPI) {
             if (enabled) {
                 glEnable(GL_CULL_FACE);
@@ -379,6 +403,7 @@ namespace GI {
 
     auto blend_func(u32 src, u32 dest) -> void {
         if (rctxSettings.renderingApi == Vulkan) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
             VkColorBlendEquationEXT blendEquationExt;
 
 
@@ -433,6 +458,7 @@ namespace GI {
 
             auto fn = reinterpret_cast<PFN_vkCmdSetColorBlendEquationEXT>(vkGetDeviceProcAddr(detail::VKContext::get().logicalDevice, "vkCmdSetColorBlendEquationEXT"));
             fn(detail::VKPipeline::get().commandBuffer, 0, 1, &blendEquationExt);
+#endif
         } else if(rctxSettings.renderingApi == OpenGL || rctxSettings.renderingApi == DefaultAPI) {
 #ifndef PSP
             glBlendFunc(src, dest);
@@ -454,7 +480,9 @@ namespace GI {
 
     auto start_frame(bool dialog) -> void {
         if(rctxSettings.renderingApi == Vulkan) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
             detail::VKPipeline::get().beginFrame();
+#endif
         } else {
 #if BUILD_PLAT == BUILD_PSP
             guglStartFrame(list, dialog);
@@ -475,7 +503,13 @@ namespace GI {
         }
 
         if(rctxSettings.renderingApi == Vulkan) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
             detail::VKPipeline::get().endFrame();
+#endif
+        } else if (rctxSettings.renderingApi == DX11) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
+            detail::DXContext::get().swapChain->Present(0, 0);
+#endif
         }
 
         if (vsync)
@@ -499,7 +533,7 @@ namespace GI {
 #endif
     }
 
-    auto to_vec4(Color &c) -> glm::vec4 {
+    auto to_vec4(Color &c) -> Math::Vector4<float> {
         return {static_cast<float>(c.rgba.r) / 255.0f,
                 static_cast<float>(c.rgba.g) / 255.0f,
                 static_cast<float>(c.rgba.b) / 255.0f,
@@ -508,7 +542,9 @@ namespace GI {
 
     auto clear_color(Color color) -> void {
         if(rctxSettings.renderingApi == Vulkan) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
             detail::VKPipeline::get().clearColor = to_vec4(color);
+#endif
         } else if(rctxSettings.renderingApi == OpenGL || rctxSettings.renderingApi == DefaultAPI) {
 #if BUILD_PLAT == BUILD_PSP
             glClearColor(color.color);
@@ -516,7 +552,12 @@ namespace GI {
             glClearColor(color.rgba.r, color.rgba.b, color.rgba.g, color.rgba.a);
 #else
             auto c = to_vec4(color);
-            glClearColor(c.r, c.g, c.b, c.a);
+            glClearColor(c.x, c.y, c.z, c.w);
+#endif
+        } else if (rctxSettings.renderingApi == DX11) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
+            auto c = to_vec4(color);
+            clearColor = D3DXCOLOR(c.r, c.g, c.b, c.a);
 #endif
         }
     }
@@ -526,6 +567,10 @@ namespace GI {
             glClear(mask | GL_FAST_CLEAR_BIT);
 #else
             glClear(mask);
+#endif
+        } else if(rctxSettings.renderingApi == DX11) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
+            detail::DXContext::get().clear(clearColor);
 #endif
         }
     }
@@ -562,7 +607,9 @@ namespace GI {
 
     auto create_texturehandle(std::string filename, u32 magFilter, u32 minFilter, bool repeat, bool flip) -> TextureHandle* {
         if(rctxSettings.renderingApi == Vulkan) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
             return detail::VKTextureHandle::create(filename, magFilter, minFilter, repeat, flip);
+#endif
         } else if(rctxSettings.renderingApi == OpenGL || rctxSettings.renderingApi == DefaultAPI) {
             return detail::GLTextureHandle::create(filename, magFilter, minFilter, repeat, flip);
         }
@@ -572,7 +619,9 @@ namespace GI {
 
     auto create_vertexbuffer(const Stardust_Celeste::Rendering::Vertex* vert_data, size_t vert_size, const uint16_t* indices, size_t idx_size) -> BufferObject* {
         if (rctxSettings.renderingApi == Vulkan) {
+#ifndef NO_EXPERIMENTAL_GRAPHICS
             return detail::VKBufferObject::create(vert_data, vert_size, indices, idx_size);
+#endif
         } else if(rctxSettings.renderingApi == OpenGL || rctxSettings.renderingApi == DefaultAPI) {
             return detail::GLBufferObject::create(vert_data, vert_size, indices, idx_size);
         }

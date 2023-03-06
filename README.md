@@ -21,18 +21,21 @@ Current Modules Until Intial V0.6 Release:
 - [x] Graphics 2D
 - [x] Graphics Intermediate Layer
 - [x] Audio Core
+- [x] Mathematics Library
+- [x] Vulkan
 - [ ] Scripting System
-- [ ] Mathematics Library
-- [ ] DX 9 / DX 12 Support
 - [ ] Model loading
 
 v0.7 Release: 
 - [ ] Scene Manager
 - [ ] Graphics 3D
+- [ ] DX 11
 
 ## Projects Using Stardust-Celeste
 
-Add Projects Here
+- [CrossCraft](https://github.com/CrossCraft)
+- [Founder of Nations](https://github.com/IridescentRose/Founder-Of-Nations)
+- [Medieval Tactics](https://psjuan97.itch.io/medieval-tactics)
 
 ## License
 
